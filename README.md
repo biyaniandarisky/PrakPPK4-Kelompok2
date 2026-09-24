@@ -4,7 +4,6 @@ Aplikasi web untuk membantu mahasiswa mencatat pemasukan dan pengeluaran serta m
 
 # 📄 SRS (Software Requirements Specification)
 
-## 1. Kebutuhan Fungsional
 
 | ID | Kebutuhan | 
 |----|-----------|
