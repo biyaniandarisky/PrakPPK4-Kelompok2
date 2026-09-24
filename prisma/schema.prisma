@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  nama         String
+  email        String        @unique
+  password     String        // ← F1: TAMBAHKAN INI (hash bcrypt)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt   // ← tambah ini
+  transactions Transaction[]
+  sessions     Session[]     // ← F3: relasi ke Session
+}
+
+model Session {
+  id        String   @id @default(cuid())   // ← F3: TAMBAHKAN MODEL INI
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tipe        Tipe
+  nominal     Decimal
+  kategori    String
+  tanggal     DateTime
+  keterangan  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, tanggal])
+}
+
+enum Tipe {
+  PEMASUKAN
+  PENGELUARAN
+}
