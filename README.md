@@ -1,36 +1,18 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 💸 DUITku
 
-## Getting Started
+Aplikasi web untuk membantu mahasiswa mencatat pemasukan dan pengeluaran serta memantau kondisi keuangan pribadi secara sederhana.
 
-First, run the development server:
+# 📄 SRS (Software Requirements Specification)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 1. Kebutuhan Fungsional
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| ID | Kebutuhan | Penanggung Jawab |
+|----|-----------|------------------|
+| SRS001 | Pengguna dapat registrasi dan login. | 
+| SRS002 | Pengguna dapat logout. Dashboard hanya bisa dibuka setelah login. | 
+| SRS003 | Login dipertahankan lewat session sampai logout atau kedaluwarsa. | Orang 1 |
+| SRS004 | Pengguna dapat menambah transaksi. |
+| SRS005 | Pengguna dapat melihat, mengubah, dan menghapus transaksi di dashboard. |
+| SRS006 | Dashboard menampilkan saldo, total pemasukan, dan total pengeluaran. |
+| SRS007 | Pengguna hanya dapat mengakses transaksi miliknya sendiri.|
+| SRS008 | Sistem menyimpan preferensi tema di cookie.| 
