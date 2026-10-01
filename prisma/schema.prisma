@@ -7,19 +7,20 @@ datasource db {
 }
 
 model User {
-  id           Int           @id @default(autoincrement())
-  nama         String
-  email        String        @unique
-  password     String        
-  budgetBulanan Decimal?      @default(0)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt   
-  transactions Transaction[]
-  sessions     Session[]     
+  id            Int           @id @default(autoincrement())
+  nama          String
+  email         String        @unique
+  password      String
+  budgetBulanan Decimal       @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  transactions  Transaction[]
+  sessions      Session[]
+  budgets       Budget[]
 }
 
 model Session {
-  id        String   @id @default(cuid())   // ← F3: TAMBAHKAN MODEL INI
+  id        String   @id @default(cuid())
   userId    Int
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   token     String   @unique
@@ -30,18 +31,33 @@ model Session {
 }
 
 model Transaction {
-  id          String   @id @default(cuid())
-  userId      Int
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tipe        Tipe
-  nominal     Decimal
-  kategori    String
-  tanggal     DateTime
-  keterangan  String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tipe       Tipe
+  nominal    Decimal
+  kategori   String
+  tanggal    DateTime
+  keterangan String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([userId, tanggal])
+}
+
+model Budget {
+  id        String   @id @default(cuid())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bulan     Int      // 1-12
+  tahun     Int      // contoh: 2026
+  nominal   Decimal  // batas anggaran
+  kategori  String?  // null = anggaran umum, isi = anggaran per kategori
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, bulan, tahun, kategori])
+  @@index([userId, tahun, bulan])
 }
 
 enum Tipe {
