@@ -15,6 +15,7 @@ model User {
   updatedAt    DateTime      @updatedAt   // ← tambah ini
   transactions Transaction[]
   sessions     Session[]     // ← F3: relasi ke Session
+  budgets      Budget[]   
 }
 
 model Session {
@@ -46,4 +47,18 @@ model Transaction {
 enum Tipe {
   PEMASUKAN
   PENGELUARAN
+}
+
+model Budget {
+  id         String   @id @default(cuid())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bulan      Int
+  tahun      Int
+  nominal    Decimal
+  kategori   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, bulan, tahun, kategori])
 }
