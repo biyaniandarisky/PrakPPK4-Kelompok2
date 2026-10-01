@@ -7,15 +7,16 @@ datasource db {
 }
 
 model User {
-  id           Int           @id @default(autoincrement())
-  nama         String
-  email        String        @unique
-  password     String
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  transactions Transaction[]
-  sessions     Session[]     // ← F3: relasi ke Session
-  budgets      Budget[]   
+  id            Int           @id @default(autoincrement())
+  nama          String
+  email         String        @unique
+  password      String
+  budgetBulanan Decimal       @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  transactions  Transaction[]
+  sessions      Session[]
+  budgets       Budget[]
 }
 
 model Session {
@@ -30,16 +31,16 @@ model Session {
 }
 
 model Transaction {
-  id          String   @id @default(cuid())
-  userId      Int
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tipe        Tipe
-  nominal     Decimal
-  kategori    String
-  tanggal     DateTime
-  keterangan  String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tipe       Tipe
+  nominal    Decimal
+  kategori   String
+  tanggal    DateTime
+  keterangan String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([userId, tanggal])
 }
@@ -50,29 +51,16 @@ model Budget {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   bulan     Int      // 1-12
   tahun     Int      // contoh: 2026
-  nominal   Decimal  // batas anggaran bulanan
+  nominal   Decimal  // batas anggaran
+  kategori  String?  // null = anggaran umum, isi = anggaran per kategori
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([userId, bulan, tahun])
+  @@unique([userId, bulan, tahun, kategori])
   @@index([userId, tahun, bulan])
 }
 
 enum Tipe {
   PEMASUKAN
   PENGELUARAN
-}
-
-model Budget {
-  id         String   @id @default(cuid())
-  userId     Int
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bulan      Int
-  tahun      Int
-  nominal    Decimal
-  kategori   String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@unique([userId, bulan, tahun, kategori])
 }
