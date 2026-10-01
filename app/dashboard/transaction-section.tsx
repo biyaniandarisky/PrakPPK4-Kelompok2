@@ -1,6 +1,9 @@
+// app/dashboard/transaction-section.tsx
+// SRS009: AJAX Dashboard — auto-refresh & filter transaksi tanpa full page reload
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import EditTransactionButton from "./edit-transaction-button";
 
 type Transaction = {
   id: string;
@@ -17,11 +20,14 @@ type Summary = {
   saldo: number;
 };
 
+const REFRESH_INTERVAL_MS = 30_000; // auto-refresh tiap 30 detik
+
 export default function TransactionSection() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const [tipe, setTipe] = useState<"PEMASUKAN" | "PENGELUARAN">("PEMASUKAN");
   const [nominal, setNominal] = useState("");
@@ -29,6 +35,7 @@ export default function TransactionSection() {
   const [tanggal, setTanggal] = useState("");
   const [keterangan, setKeterangan] = useState("");
 
+  // State untuk filter transaksi
   const [filterTipe, setFilterTipe] = useState("ALL");
   const [filterKategori, setFilterKategori] = useState("ALL");
   const [startDate, setStartDate] = useState("");
@@ -44,37 +51,47 @@ export default function TransactionSection() {
     borderRadius: 4,
   };
 
-  async function fetchTransactions(
-    fTipe = filterTipe,
-    fKat = filterKategori,
-    fStart = startDate,
-    fEnd = endDate
-  ) {
-    const params = new URLSearchParams();
-    if (fTipe && fTipe !== "ALL") params.append("tipe", fTipe);
-    if (fKat && fKat !== "ALL") params.append("kategori", fKat);
-    if (fStart) params.append("startDate", fStart);
-    if (fEnd) params.append("endDate", fEnd);
+  // Fungsi fetch data dengan mendukung filter & mode silent (auto-refresh)
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    else setRefreshing(true);
 
-    const res = await fetch(`/api/transactions?${params.toString()}`);
-    if (res.ok) {
-      const data = await res.json();
-      setTransactions(data);
+    try {
+      const params = new URLSearchParams();
+      if (filterTipe && filterTipe !== "ALL") params.append("tipe", filterTipe);
+      if (filterKategori && filterKategori !== "ALL") params.append("kategori", filterKategori);
+      if (startDate) params.append("startDate", startDate);
+      if (endDate) params.append("endDate", endDate);
+
+      const [summaryRes, trxRes] = await Promise.all([
+        fetch("/api/summary", { cache: "no-store" }),
+        fetch(`/api/transactions?${params.toString()}`, { cache: "no-store" }),
+      ]);
+
+      if (summaryRes.ok) setSummary(await summaryRes.json());
+      if (trxRes.ok) setTransactions(await trxRes.json());
+      setLastUpdated(new Date());
+    } catch (err) {
+      console.error("Gagal load data:", err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  }
+  }, [filterTipe, filterKategori, startDate, endDate]);
 
-  async function loadData() {
-    const summaryRes = await fetch("/api/summary");
-    if (summaryRes.ok) {
-      setSummary(await summaryRes.json());
-    }
-    await fetchTransactions();
-    setLoading(false);
-  }
-
+  // Initial load & trigger ulang saat filter berubah
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
+
+  // SRS009: auto-refresh tiap 30 detik
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadData(true);
+    }, REFRESH_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [loadData]);
 
   function handleFilterChange(
     newTipe: string,
@@ -86,7 +103,6 @@ export default function TransactionSection() {
     setFilterKategori(newKat);
     setStartDate(newStart);
     setEndDate(newEnd);
-    fetchTransactions(newTipe, newKat, newStart, newEnd);
   }
 
   function resetForm() {
@@ -95,50 +111,67 @@ export default function TransactionSection() {
     setKategori("");
     setTanggal("");
     setKeterangan("");
-    setEditingId(null);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const payload = { tipe, nominal: Number(nominal), kategori, tanggal, keterangan };
 
-    if (editingId) {
-      await fetch(`/api/transactions/${editingId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-    } else {
-      await fetch("/api/transactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-    }
+    await fetch("/api/transactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
     resetForm();
-    loadData();
-  }
-
-  function handleEdit(t: Transaction) {
-    setEditingId(t.id);
-    setTipe(t.tipe);
-    setNominal(String(t.nominal));
-    setKategori(t.kategori);
-    setTanggal(t.tanggal.slice(0, 10));
-    setKeterangan(t.keterangan ?? "");
+    loadData(true);
   }
 
   async function handleDelete(id: string) {
     if (!confirm("Yakin mau hapus transaksi ini?")) return;
     await fetch(`/api/transactions/${id}`, { method: "DELETE" });
-    loadData();
+    loadData(true);
   }
 
-  if (loading) return <p>Memuat data transaksi...</p>;
+  if (loading && transactions.length === 0) return <p>Memuat data transaksi...</p>;
 
   return (
     <div style={{ marginTop: 24, color: "inherit" }}>
+      {/* Header dengan tombol refresh manual */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 12,
+        }}
+      >
+        <h2 style={{ margin: 0 }}>Ringkasan & Transaksi</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {lastUpdated && (
+            <span style={{ fontSize: 12, opacity: 0.7 }}>
+              Terakhir: {lastUpdated.toLocaleTimeString("id-ID")}
+            </span>
+          )}
+          <button
+            onClick={() => loadData(true)}
+            disabled={refreshing}
+            style={{
+              padding: "6px 12px",
+              borderRadius: 6,
+              border: "1px solid #2563eb",
+              background: refreshing ? "#93c5fd" : "transparent",
+              color: "inherit",
+              cursor: refreshing ? "wait" : "pointer",
+              fontSize: 13,
+            }}
+          >
+            {refreshing ? "Memuat..." : "🔄 Refresh"}
+          </button>
+        </div>
+      </div>
+
+      {/* Ringkasan */}
       <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
         <div style={{ border: "1px solid #666", padding: 12, borderRadius: 8, flex: 1 }}>
           <p style={{ margin: 0, fontSize: 12, opacity: 0.8 }}>Saldo</p>
@@ -159,11 +192,13 @@ export default function TransactionSection() {
           </p>
         </div>
       </div>
+
+      {/* Form Tambah */}
       <form
         onSubmit={handleSubmit}
         style={{ border: "1px solid #666", padding: 16, borderRadius: 8, marginBottom: 20 }}
       >
-        <h3 style={{ marginTop: 0 }}>{editingId ? "Edit Transaksi" : "Tambah Transaksi"}</h3>
+        <h3 style={{ marginTop: 0 }}>Tambah Transaksi</h3>
 
         <select
           value={tipe}
@@ -207,15 +242,12 @@ export default function TransactionSection() {
           style={inputStyle}
         />
 
-        <button type="submit" style={{ padding: "8px 16px", marginRight: 8, cursor: "pointer" }}>
-          {editingId ? "Simpan Perubahan" : "Tambah"}
+        <button type="submit" style={{ padding: "8px 16px", cursor: "pointer" }}>
+          Tambah
         </button>
-        {editingId && (
-          <button type="button" onClick={resetForm} style={{ padding: "8px 16px", cursor: "pointer" }}>
-            Batal
-          </button>
-        )}
       </form>
+
+      {/* Filter Transaksi */}
       <div style={{ border: "1px solid #666", padding: 16, borderRadius: 8, marginBottom: 20 }}>
         <h4 style={{ marginTop: 0, marginBottom: 12 }}>Filter Transaksi</h4>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -270,9 +302,10 @@ export default function TransactionSection() {
               style={{ ...inputStyle, marginBottom: 0 }}
             />
           </div>
-
         </div>
       </div>
+
+      {/* Riwayat Transaksi */}
       <h3>Riwayat Transaksi</h3>
       {transactions.length === 0 && (
         <p style={{ opacity: 0.7 }}>Belum ada data transaksi yang sesuai filter.</p>
@@ -302,10 +335,8 @@ export default function TransactionSection() {
               {t.keterangan && ` — ${t.keterangan}`}
             </p>
           </div>
-          <div>
-            <button onClick={() => handleEdit(t)} style={{ marginRight: 8, cursor: "pointer" }}>
-              Edit
-            </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <EditTransactionButton transaction={t} onSaved={() => loadData(true)} />
             <button onClick={() => handleDelete(t.id)} style={{ cursor: "pointer" }}>
               Hapus
             </button>

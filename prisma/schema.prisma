@@ -10,15 +10,16 @@ model User {
   id           Int           @id @default(autoincrement())
   nama         String
   email        String        @unique
-  password     String        // ← F1: TAMBAHKAN INI (hash bcrypt)
+  password     String
   createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt   // ← tambah ini
+  updatedAt    DateTime      @updatedAt
   transactions Transaction[]
   sessions     Session[]     // ← F3: relasi ke Session
+  budgets      Budget[]   
 }
 
 model Session {
-  id        String   @id @default(cuid())   // ← F3: TAMBAHKAN MODEL INI
+  id        String   @id @default(cuid())
   userId    Int
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   token     String   @unique
@@ -43,7 +44,35 @@ model Transaction {
   @@index([userId, tanggal])
 }
 
+model Budget {
+  id        String   @id @default(cuid())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bulan     Int      // 1-12
+  tahun     Int      // contoh: 2026
+  nominal   Decimal  // batas anggaran bulanan
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, bulan, tahun])
+  @@index([userId, tahun, bulan])
+}
+
 enum Tipe {
   PEMASUKAN
   PENGELUARAN
+}
+
+model Budget {
+  id         String   @id @default(cuid())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bulan      Int
+  tahun      Int
+  nominal    Decimal
+  kategori   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, bulan, tahun, kategori])
 }
