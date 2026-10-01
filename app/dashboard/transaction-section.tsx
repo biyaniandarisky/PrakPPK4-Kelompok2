@@ -1,4 +1,3 @@
-// app/dashboard/transaction-section.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -24,20 +23,17 @@ export default function TransactionSection() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // State Form Transaksi
   const [tipe, setTipe] = useState<"PEMASUKAN" | "PENGELUARAN">("PEMASUKAN");
   const [nominal, setNominal] = useState("");
   const [kategori, setKategori] = useState("");
   const [tanggal, setTanggal] = useState("");
   const [keterangan, setKeterangan] = useState("");
 
-  // State Filter Transaksi (SRS015)
   const [filterTipe, setFilterTipe] = useState("ALL");
   const [filterKategori, setFilterKategori] = useState("ALL");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  // Styling helper agar kompatibel dengan Dark/Light mode
   const inputStyle: React.CSSProperties = {
     width: "100%",
     padding: 8,
@@ -143,7 +139,6 @@ export default function TransactionSection() {
 
   return (
     <div style={{ marginTop: 24, color: "inherit" }}>
-      {/* Ringkasan Saldo */}
       <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
         <div style={{ border: "1px solid #666", padding: 12, borderRadius: 8, flex: 1 }}>
           <p style={{ margin: 0, fontSize: 12, opacity: 0.8 }}>Saldo</p>
@@ -164,8 +159,6 @@ export default function TransactionSection() {
           </p>
         </div>
       </div>
-
-      {/* Form Tambah/Edit Transaksi */}
       <form
         onSubmit={handleSubmit}
         style={{ border: "1px solid #666", padding: 16, borderRadius: 8, marginBottom: 20 }}
@@ -223,13 +216,9 @@ export default function TransactionSection() {
           </button>
         )}
       </form>
-
-      {/* Panel Filter Transaksi (SRS015 - AJAX) */}
       <div style={{ border: "1px solid #666", padding: 16, borderRadius: 8, marginBottom: 20 }}>
         <h4 style={{ marginTop: 0, marginBottom: 12 }}>Filter Transaksi</h4>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          
-          {/* Filter Tipe */}
           <div style={{ flex: 1, minWidth: 140 }}>
             <label style={{ display: "block", fontSize: 12, marginBottom: 4, opacity: 0.8 }}>
               Tipe Transaksi
@@ -244,8 +233,6 @@ export default function TransactionSection() {
               <option value="PENGELUARAN" style={{ color: "#000" }}>Pengeluaran</option>
             </select>
           </div>
-
-          {/* Filter Kategori */}
           <div style={{ flex: 1, minWidth: 140 }}>
             <label style={{ display: "block", fontSize: 12, marginBottom: 4, opacity: 0.8 }}>
               Kategori
@@ -261,8 +248,6 @@ export default function TransactionSection() {
               style={{ ...inputStyle, marginBottom: 0 }}
             />
           </div>
-
-          {/* Filter Start Date */}
           <div style={{ flex: 1, minWidth: 140 }}>
             <label style={{ display: "block", fontSize: 12, marginBottom: 4, opacity: 0.8 }}>
               Dari Tanggal
@@ -274,8 +259,6 @@ export default function TransactionSection() {
               style={{ ...inputStyle, marginBottom: 0 }}
             />
           </div>
-
-          {/* Filter End Date */}
           <div style={{ flex: 1, minWidth: 140 }}>
             <label style={{ display: "block", fontSize: 12, marginBottom: 4, opacity: 0.8 }}>
               Sampai Tanggal
@@ -290,8 +273,6 @@ export default function TransactionSection() {
 
         </div>
       </div>
-
-      {/* List Transaksi */}
       <h3>Riwayat Transaksi</h3>
       {transactions.length === 0 && (
         <p style={{ opacity: 0.7 }}>Belum ada data transaksi yang sesuai filter.</p>
