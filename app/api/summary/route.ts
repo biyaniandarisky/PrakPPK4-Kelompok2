@@ -8,15 +8,32 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const pemasukan = await prisma.transaction.aggregate({
-    where: { userId: user.id, tipe: "PEMASUKAN" },
-    _sum: { nominal: true },
-  });
+  const now = new Date();
+  const awalBulan = new Date(now.getFullYear(), now.getMonth(), 1);
+  const awalBulanDepan = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-  const pengeluaran = await prisma.transaction.aggregate({
-    where: { userId: user.id, tipe: "PENGELUARAN" },
-    _sum: { nominal: true },
-  });
+  const [userData, pemasukan, pengeluaran, pengeluaranBulan] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: user.id },
+      select: { budgetBulanan: true },
+    }),
+    prisma.transaction.aggregate({
+      where: { userId: user.id, tipe: "PEMASUKAN" },
+      _sum: { nominal: true },
+    }),
+    prisma.transaction.aggregate({
+      where: { userId: user.id, tipe: "PENGELUARAN" },
+      _sum: { nominal: true },
+    }),
+    prisma.transaction.aggregate({
+      where: {
+        userId: user.id,
+        tipe: "PENGELUARAN",
+        tanggal: { gte: awalBulan, lt: awalBulanDepan },
+      },
+      _sum: { nominal: true },
+    }),
+  ]);
 
   const totalPemasukan = Number(pemasukan._sum.nominal ?? 0);
   const totalPengeluaran = Number(pengeluaran._sum.nominal ?? 0);
@@ -25,5 +42,7 @@ export async function GET() {
     totalPemasukan,
     totalPengeluaran,
     saldo: totalPemasukan - totalPengeluaran,
+    budgetBulanan: Number(userData?.budgetBulanan ?? 0),
+    pengeluaranBulanIni: Number(pengeluaranBulan._sum.nominal ?? 0),
   });
 }

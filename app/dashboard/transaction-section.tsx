@@ -15,6 +15,8 @@ type Summary = {
   totalPemasukan: number;
   totalPengeluaran: number;
   saldo: number;
+  budgetBulanan?: number;
+  pengeluaranBulanIni?: number; // pengeluaran bulan berjalan (untuk progress anggaran)
 };
 
 export default function TransactionSection() {
@@ -33,6 +35,11 @@ export default function TransactionSection() {
   const [filterKategori, setFilterKategori] = useState("ALL");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  // Form atur budget bulanan
+  const [budgetInput, setBudgetInput] = useState("");
+  const [savingBudget, setSavingBudget] = useState(false);
+  const [budgetMessage, setBudgetMessage] = useState<string | null>(null);
 
   const inputStyle: React.CSSProperties = {
     width: "100%",
@@ -66,7 +73,12 @@ export default function TransactionSection() {
   async function loadData() {
     const summaryRes = await fetch("/api/summary");
     if (summaryRes.ok) {
-      setSummary(await summaryRes.json());
+      const data: Summary = await summaryRes.json();
+      setSummary(data);
+      // Isi input budget dengan nilai tersimpan (hanya jika user belum mengetik)
+      setBudgetInput((prev) =>
+        prev === "" && data.budgetBulanan ? String(data.budgetBulanan) : prev
+      );
     }
     await fetchTransactions();
     setLoading(false);
@@ -120,6 +132,28 @@ export default function TransactionSection() {
     loadData();
   }
 
+  async function handleSaveBudget(e: React.FormEvent) {
+    e.preventDefault();
+    setBudgetMessage(null);
+    setSavingBudget(true);
+
+    const res = await fetch("/api/budget", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ budgetBulanan: Number(budgetInput) }),
+    });
+
+    setSavingBudget(false);
+
+    if (res.ok) {
+      setBudgetMessage("Anggaran bulanan tersimpan.");
+      await loadData();
+    } else {
+      const err = await res.json().catch(() => null);
+      setBudgetMessage(err?.error ?? "Gagal menyimpan anggaran.");
+    }
+  }
+
   function handleEdit(t: Transaction) {
     setEditingId(t.id);
     setTipe(t.tipe);
@@ -136,6 +170,17 @@ export default function TransactionSection() {
   }
 
   if (loading) return <p>Memuat data transaksi...</p>;
+
+  // --- SRS016: Kalkulasi Real-time Anggaran Bulanan ---
+  const budgetBulanan = summary?.budgetBulanan ?? 0;
+  const pengeluaranBulanIni = summary?.pengeluaranBulanIni ?? 0;
+  const persentaseAsli = budgetBulanan > 0 ? (pengeluaranBulanIni / budgetBulanan) * 100 : 0;
+  const persentase = Math.min(persentaseAsli, 100); // untuk lebar bar
+  const isOverBudget = budgetBulanan > 0 && pengeluaranBulanIni > budgetBulanan;
+
+  // Warna bar berdasarkan persentase
+  const barColor =
+    isOverBudget || persentaseAsli >= 90 ? "#ef4444" : persentaseAsli >= 75 ? "#f59e0b" : "#22c55e";
 
   return (
     <div style={{ marginTop: 24, color: "inherit" }}>
@@ -159,6 +204,83 @@ export default function TransactionSection() {
           </p>
         </div>
       </div>
+
+      {/* --- SRS016: Progress Bar Indikator Budget Bulanan --- */}
+      <div style={{ border: "1px solid #666", padding: 16, borderRadius: 8, marginBottom: 20 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 8,
+          }}
+        >
+          <h4 style={{ margin: 0 }}>Progress Anggaran Bulanan</h4>
+          <span style={{ fontSize: 12, opacity: 0.8 }}>
+            Rp {pengeluaranBulanIni.toLocaleString("id-ID")} / Rp{" "}
+            {budgetBulanan.toLocaleString("id-ID")} ({persentaseAsli.toFixed(1)}%)
+          </span>
+        </div>
+
+        {/* Container Bar */}
+        <div
+          style={{
+            width: "100%",
+            height: 12,
+            backgroundColor: "#333",
+            borderRadius: 6,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: `${persentase}%`,
+              backgroundColor: barColor,
+              transition: "width 0.3s ease-in-out",
+            }}
+          />
+        </div>
+
+        {budgetBulanan === 0 && (
+          <p style={{ margin: "8px 0 0 0", fontSize: 12, opacity: 0.8 }}>
+            Anggaran bulanan belum diatur. Isi nominal di bawah untuk mulai memantau pengeluaran.
+          </p>
+        )}
+
+        {isOverBudget && (
+          <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#ef4444", fontWeight: "bold" }}>
+            ⚠️ Perhatian: Pengeluaran telah melebihi batas anggaran bulanan!
+          </p>
+        )}
+
+        {/* Form atur budget */}
+        <form
+          onSubmit={handleSaveBudget}
+          style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "flex-start" }}
+        >
+          <input
+            type="number"
+            min={0}
+            placeholder="Atur anggaran bulanan (Rp)"
+            value={budgetInput}
+            onChange={(e) => setBudgetInput(e.target.value)}
+            style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
+            required
+          />
+          <button
+            type="submit"
+            disabled={savingBudget}
+            style={{ padding: "8px 16px", cursor: "pointer" }}
+          >
+            {savingBudget ? "Menyimpan..." : "Simpan anggaran"}
+          </button>
+        </form>
+        {budgetMessage && (
+          <p style={{ margin: "8px 0 0 0", fontSize: 12, opacity: 0.8 }}>{budgetMessage}</p>
+        )}
+      </div>
+
       <form
         onSubmit={handleSubmit}
         style={{ border: "1px solid #666", padding: 16, borderRadius: 8, marginBottom: 20 }}
@@ -216,6 +338,7 @@ export default function TransactionSection() {
           </button>
         )}
       </form>
+
       <div style={{ border: "1px solid #666", padding: 16, borderRadius: 8, marginBottom: 20 }}>
         <h4 style={{ marginTop: 0, marginBottom: 12 }}>Filter Transaksi</h4>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -270,9 +393,9 @@ export default function TransactionSection() {
               style={{ ...inputStyle, marginBottom: 0 }}
             />
           </div>
-
         </div>
       </div>
+
       <h3>Riwayat Transaksi</h3>
       {transactions.length === 0 && (
         <p style={{ opacity: 0.7 }}>Belum ada data transaksi yang sesuai filter.</p>

@@ -10,11 +10,12 @@ model User {
   id           Int           @id @default(autoincrement())
   nama         String
   email        String        @unique
-  password     String        // ← F1: TAMBAHKAN INI (hash bcrypt)
+  password     String        
+  budgetBulanan Decimal?      @default(0)
   createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt   // ← tambah ini
+  updatedAt    DateTime      @updatedAt   
   transactions Transaction[]
-  sessions     Session[]     // ← F3: relasi ke Session
+  sessions     Session[]     
 }
 
 model Session {
