@@ -1,7 +1,8 @@
 // app/dashboard/transaction-section.tsx
+// SRS009: AJAX Dashboard — auto-refresh summary tanpa full page reload
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 type Transaction = {
   id: string;
@@ -18,10 +19,14 @@ type Summary = {
   saldo: number;
 };
 
+const REFRESH_INTERVAL_MS = 30_000; // auto-refresh tiap 30 detik
+
 export default function TransactionSection() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [tipe, setTipe] = useState<"PEMASUKAN" | "PENGELUARAN">("PEMASUKAN");
@@ -30,17 +35,40 @@ export default function TransactionSection() {
   const [tanggal, setTanggal] = useState("");
   const [keterangan, setKeterangan] = useState("");
 
-  async function loadData() {
-    const summaryRes = await fetch("/api/summary");
-    const transactionsRes = await fetch("/api/transactions");
-    setSummary(await summaryRes.json());
-    setTransactions(await transactionsRes.json());
-    setLoading(false);
-  }
+  // SRS009: fetch data tanpa reload halaman
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    else setRefreshing(true);
 
+    try {
+      const [summaryRes, trxRes] = await Promise.all([
+        fetch("/api/summary", { cache: "no-store" }),
+        fetch("/api/transactions", { cache: "no-store" }),
+      ]);
+      setSummary(await summaryRes.json());
+      setTransactions(await trxRes.json());
+      setLastUpdated(new Date());
+    } catch (err) {
+      console.error("Gagal load data:", err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  // Initial load
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
+
+  // SRS009: auto-refresh tiap 30 detik
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadData(true); // silent = true, tanpa loading spinner
+    }, REFRESH_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [loadData]);
 
   function resetForm() {
     setTipe("PEMASUKAN");
@@ -70,7 +98,7 @@ export default function TransactionSection() {
     }
 
     resetForm();
-    loadData();
+    loadData(true); // refresh tanpa full reload
   }
 
   function handleEdit(t: Transaction) {
@@ -85,13 +113,47 @@ export default function TransactionSection() {
   async function handleDelete(id: string) {
     if (!confirm("Yakin mau hapus transaksi ini?")) return;
     await fetch(`/api/transactions/${id}`, { method: "DELETE" });
-    loadData();
+    loadData(true);
   }
 
   if (loading) return <p>Memuat data transaksi...</p>;
 
   return (
     <div style={{ marginTop: 24 }}>
+      {/* SRS009: Header dengan tombol refresh manual */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 12,
+        }}
+      >
+        <h2 style={{ margin: 0 }}>Ringkasan & Transaksi</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {lastUpdated && (
+            <span style={{ fontSize: 12, color: "#666" }}>
+              Terakhir: {lastUpdated.toLocaleTimeString("id-ID")}
+            </span>
+          )}
+          <button
+            onClick={() => loadData(true)}
+            disabled={refreshing}
+            style={{
+              padding: "6px 12px",
+              borderRadius: 6,
+              border: "1px solid #2563eb",
+              background: refreshing ? "#93c5fd" : "white",
+              color: "#2563eb",
+              cursor: refreshing ? "wait" : "pointer",
+              fontSize: 13,
+            }}
+          >
+            {refreshing ? "Memuat..." : "🔄 Refresh"}
+          </button>
+        </div>
+      </div>
+
       {/* Ringkasan */}
       <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
         <div style={{ border: "1px solid #ccc", padding: 12, borderRadius: 8, flex: 1 }}>
