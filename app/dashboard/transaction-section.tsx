@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import EditTransactionButton from "./edit-transaction-button";
 
 type Transaction = {
   id: string;
@@ -202,9 +203,7 @@ export default function TransactionSection() {
             </p>
           </div>
           <div>
-            <button onClick={() => handleEdit(t)} style={{ marginRight: 8 }}>
-              Edit
-            </button>
+            <EditTransactionButton transaction={t} onSaved={loadData} />
             <button onClick={() => handleDelete(t.id)}>Hapus</button>
           </div>
         </div>
